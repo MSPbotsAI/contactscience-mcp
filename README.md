@@ -66,16 +66,20 @@ silently getting an error payload back as if it were real data.
 
 ## Tool List
 
-Both tools are plain `GET` calls with **no required parameters** — this
-matches exactly how MSPbots itself calls this integration today. Each tool
-accepts an optional `extra_params` pass-through dict for any additional
-query-string filters (e.g. a date range), since Contact Science does not
-publish a public API reference (see **Known Gaps**).
+Both tools are plain `GET` calls against the same 2 endpoints MSPbots itself
+calls. **`start_date` is required** — confirmed by live testing, this is not
+documented anywhere and contradicts MSPbots' own stored integration config
+(which shows empty params); calling either endpoint without it returns
+`{"error": "Invalid parameters", "message": "startDate parameter is
+missing"}`. `end_date` is an accepted optional filter. Each tool also accepts
+an optional `extra_params` pass-through dict for any further query-string
+filters, since Contact Science does not publish a public API reference (see
+**Known Gaps**).
 
 | Tool | 功能 | 参数 |
 |---|---|---|
-| `contactscience_get_appointments` | 列出预约（appointment）报表记录 | `extra_params: dict[str,str] \| None` |
-| `contactscience_get_call_block` | 列出通话拦截（call block）报表记录 | `extra_params: dict[str,str] \| None` |
+| `contactscience_get_appointments` | 列出预约（appointment）报表记录 | `start_date: str`（必填，YYYY-MM-DD）, `end_date: str \| None`（可选）, `extra_params: dict[str,str] \| None` |
+| `contactscience_get_call_block` | 列出通话拦截（call block）报表记录 | `start_date: str`（必填，YYYY-MM-DD）, `end_date: str \| None`（可选）, `extra_params: dict[str,str] \| None` |
 
 ## 测试示例
 
@@ -97,7 +101,7 @@ curl -s -X POST http://localhost:8080/mcp \
     "method": "tools/call",
     "params": {
       "name": "contactscience_get_appointments",
-      "arguments": {}
+      "arguments": {"start_date": "2026-01-01"}
     }
   }'
 ```
@@ -106,6 +110,10 @@ Expected: `200` with the appointments list on a valid token; `200` with
 `{"error": "Unauthorized", "message": "Invalid API Key"}` in the body on an
 invalid token — surfaced by this server as a tool-level `Error: ...` message
 (see the auth quirk note above), not treated as real data.
+
+**Live-verified** (2026-07-29) against a real Tech Guardian tenant token:
+both `contactscience_get_appointments` and `contactscience_get_call_block`
+returned real data end-to-end through this running server.
 
 ## API Reference
 
@@ -125,6 +133,12 @@ invalid token — surfaced by this server as a tool-level `Error: ...` message
 - Response field shapes are not independently documented — whatever the
   live API returns is passed through as-is; no schema/field reference
   exists to validate against.
-- Request-side filter parameters (e.g. a date range) are undocumented;
+- Beyond `start_date`/`end_date`, further filter parameters are undocumented;
   `extra_params` is provided so a caller who discovers additional supported
   filters can still pass them through.
+- `start_date` being required could not be discovered from any
+  documentation or from MSPbots' own stored config (which shows it calling
+  both endpoints with zero params) — it was only found by calling the live
+  API and reading the resulting error message. MSPbots' own sync may be
+  relying on a default/fallback behavior not visible from the stored config,
+  or may be passing it through a mechanism this investigation didn't surface.
