@@ -48,8 +48,21 @@ return **HTTP 200 even when the token is invalid** — the error is embedded
 in the JSON body instead (`{"error": "Unauthorized", "message": "Invalid API
 Key"}`). This server's client (`api_client.py`) detects that body shape and
 raises a tool-level error regardless of the HTTP status code, so callers
-still see a clear `Error: Contact Science API error ...` message rather than
-silently getting an error payload back as if it were real data.
+still see a structured error envelope (see **Error Handling** below) rather
+than silently getting an error payload back as if it were real data.
+
+## Error Handling
+
+Tool errors are returned as a structured JSON envelope (never raised as
+protocol-level exceptions), so a calling agent can branch on `code` and
+`retryable` programmatically:
+
+```json
+{"error": {"code": "unauthorized", "message": "Invalid API Key", "retryable": false}}
+```
+
+`code` is one of a fixed vocabulary: `not_configured`, `unauthorized`,
+`not_found`, `invalid_argument`, `rate_limited`, `upstream_error`.
 
 ## Environment Variables
 
@@ -62,7 +75,7 @@ silently getting an error payload back as if it were real data.
 ## MCP Endpoint
 
 - `POST /mcp` — MCP protocol (streamable HTTP transport)
-- `GET /health` — health check, returns `{"status": "ok", "service": "contactscience-mcp", "transport": "http"}`
+- `GET /health` — health check, returns `{"status": "ok"}` (local probe only, does not depend on the upstream Contact Science API)
 
 ## Tool List
 
@@ -108,8 +121,8 @@ curl -s -X POST http://localhost:8080/mcp \
 
 Expected: `200` with the appointments list on a valid token; `200` with
 `{"error": "Unauthorized", "message": "Invalid API Key"}` in the body on an
-invalid token — surfaced by this server as a tool-level `Error: ...` message
-(see the auth quirk note above), not treated as real data.
+invalid token — surfaced by this server as a tool-level structured error
+envelope (see **Error Handling** above), not treated as real data.
 
 **Live-verified** (2026-07-29) against a real Tech Guardian tenant token:
 both `contactscience_get_appointments` and `contactscience_get_call_block`

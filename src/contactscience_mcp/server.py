@@ -77,6 +77,20 @@ def create_mcp_server(settings: Settings) -> FastMCP:
     # correctly behind a reverse proxy or docker network.
     mcp = FastMCP(
         name="contactscience-mcp",
+        instructions=(
+            "Contact Science is an appointment-setting / sales engagement CRM "
+            "platform MSPs use to track outbound call campaigns. This server "
+            "exposes its reporting API for two record types: scheduled/completed "
+            "appointments (contactscience_get_appointments) and blocked/rejected "
+            "call attempts (contactscience_get_call_block). Both tools are "
+            "read-only date-range reports — start_date (YYYY-MM-DD) is required "
+            "by the live API, end_date narrows the range further. Use "
+            "appointments to answer 'how many appointments were booked/kept in "
+            "period X'; use call_block to answer 'which calls were blocked/failed "
+            "to connect in period X'. There is no cross-tool relationship beyond "
+            "sharing the same date-range shape — pick whichever record type the "
+            "question is actually about."
+        ),
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
     )
 
